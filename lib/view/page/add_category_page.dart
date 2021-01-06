@@ -14,10 +14,9 @@ import 'add_category_widget/add_image_widget.dart';
 
 class AddCategoryPage extends StatelessWidget {
   final _categoryNameController = TextEditingController();
+
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _formKey = GlobalKey<FormState>();
-  final bool isEdit;
-  final Category category;
 
   List<Map<String, Object>> _imgMap = [];
   List<String> _imageUploadLink = [];
@@ -25,27 +24,14 @@ class AddCategoryPage extends StatelessWidget {
   FirebaseFirestore _firebaseFirestore;
   FirebaseStorage _storage;
 
-   AddCategoryPage({Key key, this.isEdit,this.category}) : super(key: key);
-
   @override
   Widget build(BuildContext context) {
-
-    if(isEdit && category != null){
-      _categoryNameController.text = category.name;
-      category.images.forEach((element) {
-        _imgMap.add({
-          'image':element,
-          'isLink':true,
-          'isSelect':false
-        });
-      });
-    }
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
       key: _scaffoldKey,
       appBar: AppBar(
-        title: Text(isEdit ? 'Edit Category':'Add Category'),
+        title: Text('Add Category'),
         titleSpacing: 0,
       ),
       body: Padding(
@@ -82,42 +68,7 @@ class AddCategoryPage extends StatelessWidget {
 
   void onSubmitTap(BuildContext context) {
     if (_formKey.currentState.validate()) {
-      if(isEdit){
-        if(isImagesAdded()){
-          _uploadImagesToCloudStorage(context);
-        }
-        editCategory(context,category);
-      }else{
-        _uploadImagesToCloudStorage(context);
-      }
-    }
-  }
-
-  bool isImagesAdded(){
-    for(int i = 0 ; i< _imgMap.length;i++){
-      if(_imgMap[i]['isLink']){
-        return true;
-      }
-    }
-    return false;
-  }
-  void editCategory(BuildContext context,Category category)async{
-    if (!await CommonMethod.isInternetConnected()) {
-      CommonMethod.snackBarAlert(_scaffoldKey, 'No internet connectivity');
-    }else{
-      _firebaseFirestore = FirebaseFirestore.instance;
-      try {
-        CommonMethod.showProgress(context, 'Update Category....');
-        var _result =
-        await _firebaseFirestore.collection('Categories').doc(category.id).update(category.toJson());
-        Navigator.pop(context);
-        Navigator.of(context).pop(category);
-      } catch (e) {
-        Navigator.pop(context);
-        CommonMethod.snackBarAlert(
-            _scaffoldKey, 'Something went wrong try again later');
-        print('error on update category ==> $e}');
-      }
+      _uploadImagesToCloudStorage(context);
     }
   }
 
@@ -128,32 +79,22 @@ class AddCategoryPage extends StatelessWidget {
       CommonMethod.showProgress(context, 'Uploading images....');
       try {
         _storage = FirebaseStorage.instance;
-
-        String fileName = DateTime
-            .now()
-            .microsecondsSinceEpoch
-            .toString();
         _imageUploadLink = [];
         for (int i = 0; i < _imgMap.length; i++) {
-          if(!_imgMap[i]['isLink']) {
-            Reference ref = _storage.ref().child(
-                "Category_image/$fileName.jpeg");
-            var _uploadTask = ref.putFile(File(_imgMap[i]['image']));
-            var shot = await _uploadTask.whenComplete(() {});
-            var uri = await shot.ref.getDownloadURL();
-            _imageUploadLink.add(uri);
-            print('uri ===> $uri');
-          }
+          String fileName = DateTime
+              .now()
+              .microsecondsSinceEpoch
+              .toString();
+          Reference ref = _storage.ref().child(
+              "Category_image/$fileName.jpeg");
+          var _uploadTask = ref.putFile(File(_imgMap[i]['image']));
+          var shot = await _uploadTask.whenComplete(() {});
+          var uri = await shot.ref.getDownloadURL();
+          _imageUploadLink.add(uri);
+          print('uri $i ===> $uri');
         }
-
         Navigator.pop(context);
-
-        _imageUploadLink.forEach((element) {
-          category.images.add(element);
-        });
-
-        isEdit ? editCategory(context, category) : addCategoryOnServer(context);
-
+          addCategoryOnServer(context);
       } catch (e) {
         Navigator.pop(context);
         CommonMethod.snackBarAlert(
@@ -180,7 +121,7 @@ class AddCategoryPage extends StatelessWidget {
         var _result =
         await _firebaseFirestore.collection('Categories').doc(c.id).set(c.toJson());
         Navigator.pop(context);
-        Navigator.of(context).pop(c);
+        Navigator.pop(context);
       } catch (e) {
         Navigator.pop(context);
         CommonMethod.snackBarAlert(

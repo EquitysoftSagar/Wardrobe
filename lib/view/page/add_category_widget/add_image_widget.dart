@@ -97,7 +97,6 @@ class _AddCategoryImageWidgetState extends State<AddCategoryImageWidget> {
           var map = {
             'image':pickedFile.path,
             'isSelect': false,
-            'isLink':false
           };
           widget.imgMap.add(map);
         });

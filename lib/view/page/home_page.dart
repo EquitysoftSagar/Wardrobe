@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:wardrobe_2/model/category.dart';
 import 'package:wardrobe_2/util/constants.dart';
@@ -17,15 +18,13 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   FirebaseFirestore _firebaseFirestore;
-  Widget _activeWidget = Container();
-  List<Category> _listCategory = [];
 
   @override
   void initState() {
     super.initState();
+    _firebaseFirestore = FirebaseFirestore.instance;
     GetValue.string(Keys.token).then((value) {
       Constants.token = value;
-      apiGetCategory();
     });
   }
 
@@ -38,7 +37,8 @@ class _HomePageState extends State<HomePage> {
           automaticallyImplyLeading: false,
           elevation: 0,
           actions: [
-            IconButton(icon: Icon(Icons.refresh), onPressed: onRefreshTap)
+            // IconButton(icon: Icon(Icons.refresh), onPressed: onRefreshTap),
+            IconButton(icon: Icon(Icons.logout), onPressed: onLogoutTap),
           ],
         ),
         floatingActionButton: FloatingActionButton(
@@ -47,83 +47,74 @@ class _HomePageState extends State<HomePage> {
           },
           child: Icon(Icons.add),
         ),
-        body: _activeWidget);
+        body: StreamBuilder(
+          stream: FirebaseFirestore.instance
+              .collection('Categories')
+              .where('userId', isEqualTo: Constants.token)
+              .snapshots(),
+          builder:
+              (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                print('token  stream ==> ${Constants.token}');
+                if(snapshot.connectionState == ConnectionState.waiting){
+                  return Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }else if(snapshot.hasData == null || snapshot.data.docs.length == 0){
+                  return MessageUi.noData();
+                }
+                return _listWidget(snapshot.data.docs);
+          },
+        ));
   }
 
-  void apiGetCategory() async {
+  void updateCategory(String name, String id) async {
     if (!await CommonMethod.isInternetConnected()) {
-      setState(() {
-        _activeWidget = MessageUi.noInternet(onRetry: onRetry,);
-      });
+      CommonMethod.snackBarAlert(_scaffoldKey, 'No internet connection');
     } else {
-      try{
-        CommonMethod.showProgress(context, 'Fetching category...');
-        _firebaseFirestore = FirebaseFirestore.instance;
-        _firebaseFirestore
-            .collection(Constants.collectionCategory)
-            .where('userId', isEqualTo: Constants.token)
-            .get()
-            .then((value) {
-          Navigator.pop(context);
-          _listCategory = [];
-          value.docs.forEach((element) {
-            _listCategory.add(Category.fromJson(element.data()));
-          });
-
-          setState(() {
-            _activeWidget = _listCategory.length != 0 ? _listWidget : MessageUi.noData();
-          });
+      try {
+        CommonMethod.showProgress(context, 'Updating category...');
+        print('id ===> $id');
+        print('name ===> $name');
+        var _result =
+            await _firebaseFirestore.collection('Categories').doc(id).update({
+          "name": name,
         });
-      } catch (e){
         Navigator.pop(context);
-        setState(() {
-          _activeWidget = MessageUi.wentWrong(onRetry: onRetry,);
-        });
+      } catch (e) {
+        Navigator.pop(context);
+        CommonMethod.snackBarAlert(
+            _scaffoldKey, 'Error on update category try again later');
+        print('error on update category ===> $e');
       }
     }
   }
 
-  Widget get _listWidget => ListView.builder(
+  Widget _listWidget(List<QueryDocumentSnapshot> category) =>
+      /* _listCategory.length != 0 ?*/ ListView.builder(
         itemBuilder: (context, index) => ListCategoryView(
           index: index,
-          category: _listCategory[index],
+          category: Category.fromJson(category[index].data()),
           deleteFn: _deleteCategory,
+          editFn: updateCategory,
         ),
-        itemCount: _listCategory.length,
+        itemCount: category.length,
         physics: BouncingScrollPhysics(),
-      );
+      ) /*: MessageUi.noData()*/;
 
   void onFloatingButtonTap(BuildContext context) {
-    CommonMethod.navigateTo(context, AddCategoryPage(isEdit: false,),result: (value){
-      if(value != null){
-        // Category category = value;
-        /*setState(() {
-          _listCategory.add(category);
-        });*/
-        apiGetCategory();
-      }
-    });
+    CommonMethod.navigateTo(context, AddCategoryPage());
   }
 
-  void onRetry() {
-    apiGetCategory();
-  }
-
-  void _deleteCategory(Category category)async{
+  void _deleteCategory(String id) async {
     if (!await CommonMethod.isInternetConnected()) {
       CommonMethod.snackBarAlert(_scaffoldKey, 'No internet connectivity');
     } else {
-      try{
+      try {
         CommonMethod.showProgress(context, 'Deleting Category....');
         _firebaseFirestore = FirebaseFirestore.instance;
-        await _firebaseFirestore.collection('Categories').doc(category.id).delete();
-       /* setState(() {
-          _listCategory.remove(category);
-          print("isdeleteon=== > ${category.name}");
-        });*/
+        await _firebaseFirestore.collection('Categories').doc(id).delete();
         Navigator.pop(context);
-        apiGetCategory();
-      }catch (e){
+      } catch (e) {
         Navigator.pop(context);
         CommonMethod.snackBarAlert(_scaffoldKey, 'Error on deleting category');
         print('Error on deleting category ==> $e}');
@@ -131,7 +122,13 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void onRefreshTap() {
-    apiGetCategory();
+  void onLogoutTap() async {
+    bool isClear = await Value.clear();
+    if (isClear) {
+      Constants.token = '';
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    } else {
+      CommonMethod.snackBarAlert(_scaffoldKey, 'Failed to logout');
+    }
   }
 }

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:wardrobe_2/model/category.dart';
-import 'package:wardrobe_2/util/methods.dart';
-import 'package:wardrobe_2/view/page/add_category_page.dart';
-
+import 'package:wardrobe_2/view/dialog/edit_name_dialog.dart';
 import 'sub_category_list_view.dart';
 
 class ListCategoryView extends StatelessWidget {
@@ -10,7 +8,7 @@ class ListCategoryView extends StatelessWidget {
   final Category category;
   final Function deleteFn;
   final Function editFn;
-  final List<String> _menuList = ['Edit', 'Delete'];
+  final List<String> _menuList = ['Edit','Delete'];
 
   ListCategoryView({Key key, this.index,this.category,this.deleteFn,this.editFn}) : super(key: key);
 
@@ -67,13 +65,15 @@ class ListCategoryView extends StatelessWidget {
   }
 
   void onMenuSelect(value, BuildContext context) {
-    if(value == 'Edit'){
-      CommonMethod.navigateTo(context, AddCategoryPage(
-        isEdit: true,
-        category: category,
-      ));
-    }else{
-      deleteFn(category);
-    }
+   if(value == 'Edit'){
+     showDialog(context: context,builder: (context) => EditCategoryDialog(name: category.name,)).then((value){
+       String name = value;
+       if(name != null){
+         editFn(name,category.id);
+       }
+     });
+   }else{
+     deleteFn(category.id);
+   }
   }
 }

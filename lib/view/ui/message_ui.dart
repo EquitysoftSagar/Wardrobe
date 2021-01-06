@@ -60,7 +60,7 @@ class MessageUi extends StatelessWidget {
             height: 20,
           ),
           Visibility(
-            visible: onRetry == null ? false : true,
+            visible: false,
             child: FlatButton(
                 onPressed: onRetry, color: MyColor.accent, child: Text('Retry')),
           )

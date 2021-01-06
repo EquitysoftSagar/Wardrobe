@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:wardrobe_2/style/colors.dart';
 import 'package:wardrobe_2/style/images.dart';
+import 'package:wardrobe_2/util/constants.dart';
 import 'package:wardrobe_2/util/methods.dart';
 import 'package:wardrobe_2/util/my_shared_preference.dart';
 import 'package:wardrobe_2/view/ui/login_text_field.dart';
@@ -118,9 +119,9 @@ class LoginPage extends StatelessWidget {
             email: _emailController.text, password: _passwordController.text);
         print('token ===> ${_result.user.uid}');
         await SaveValue.string(Keys.token, _result.user.uid);
+        Constants.token =  _result.user.uid;
         Navigator.pop(context);
         CommonMethod.navigateTo(context, HomePage());
-
       } on FirebaseAuthException catch(error){
         Navigator.pop(context);
         print('error code ==> ${error.code}');

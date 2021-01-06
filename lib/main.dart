@@ -1,6 +1,9 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:wardrobe_2/style/colors.dart';
+import 'package:wardrobe_2/util/constants.dart';
+import 'package:wardrobe_2/util/my_shared_preference.dart';
+import 'package:wardrobe_2/view/page/home_page.dart';
 import 'package:wardrobe_2/view/page/login_page.dart';
 
 void main() async{
@@ -49,7 +52,30 @@ class MyApp extends StatelessWidget {
         ),
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: LoginPage(),
+      onGenerateRoute: (route){
+        switch(route.name){
+          case '/login':
+            return MaterialPageRoute(builder: (context) => LoginPage());
+          case '/home':
+            return MaterialPageRoute(builder: (context) => HomePage());
+          default:
+            return MaterialPageRoute(builder: (context) => LoginPage());
+        }
+      },
+      home: FutureBuilder(
+        future: GetValue.string(Keys.token),
+          builder: (context,AsyncSnapshot<String> snap){
+          if(snap.connectionState == ConnectionState.waiting){
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          }else if(snap.hasData){
+            Constants.token = snap.data;
+            return HomePage();
+          } else{
+            return LoginPage();
+        }
+      }),
     );
   }
 }
